@@ -100,7 +100,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>角色卡提取工具 <span style="font-size:13px;font-weight:500;color:var(--gold);vertical-align:2px">v5.8.4</span></h1>
+    <h1>角色卡提取工具 <span style="font-size:13px;font-weight:500;color:var(--gold);vertical-align:2px">v5.8.5</span></h1>
     <div class="sub">导入小说 · 扫描角色 · 按模板抽取角色卡</div>
     <div class="rule"></div>
   </header>
@@ -1756,14 +1756,16 @@ function parseWbPreview(text){
     if(hm){
       if(cur) entries.push(cur);
       let head=hm[1].trim(), category="设定", title=head;
-      const cm=head.match(/^(.*?)[　\s]*[\[［](.+?)[\]］]\s*$/);
-      if(cm){ title=cm[1].trim(); category=cm[2].trim(); }
+      const cm=head.match(/^(.+)[　\s]+[\[［]([^\[\]［］]+)[\]］]$/);   // 贪心吃前缀，只认结尾的 [分类]，且分类内不含括号
+      if(cm && cm[1].trim()){ title=cm[1].trim(); category=cm[2].trim(); }
+      if(!title) title=head;   // 兜底：绝不让标题为空（否则条目会被过滤丢失）
       cur={ title, category, keys:[], content:"", constant:false }; mode=null; continue;
     }
     if(!cur) continue;
     if(/^触发关键词\s*[:：]/.test(line)){
       const v=line.replace(/^触发关键词\s*[:：]\s*/,"").trim();
-      cur.keys=(v && !/^（?无）?$/.test(v))? v.split(/[、,，]/).map(s=>s.trim()).filter(Boolean):[]; mode=null; continue;
+      const isNone = !v || /^[（(]?无/.test(v) || v.indexOf("建议手动补")>=0;   // 识别「（无，建议手动补）」占位符
+      cur.keys= isNone ? [] : v.split(/[、,，]/).map(s=>s.trim()).filter(Boolean); mode=null; continue;
     }
     if(/^推荐模式\s*[:：]/.test(line)){ cur.constant=/常驻|蓝灯|constant/i.test(line); mode=null; continue; }
     if(/^内容\s*[:：]/.test(line)){ mode="content"; const rest=line.replace(/^内容\s*[:：]\s*/,""); if(rest.trim()) cur.content+=rest+"\n"; continue; }
@@ -1992,10 +1994,19 @@ async function wbConstantEntry(signal, kind){
 function syncWbFromPreview(){
   const txt=$("wbOut").value;
   if(!txt.trim()) return;
-  if(txt.trim()===buildWbPreview(wbEntries).trim()) return;   // 没动过
+  if(txt.trim()===buildWbPreview(wbEntries).trim()) return;   // 没动过，直接用内部条目
   const parsed=parseWbPreview(txt);
-  if(parsed.length){ wbEntries=parsed; }
-  else logTo("wbLog","预览框内容无法解析成条目（格式需保持「===== 序号. 标题 =====」那套），导出将沿用上次的结果","e");
+  if(!parsed.length){
+    logTo("wbLog","预览框内容无法解析成条目（格式需保持「===== 序号. 标题 =====」那套），导出将沿用上次的结果","e");
+    return;
+  }
+  // 防丢失：解析结果比原来少很多时，多半是手滑删坏了预览，提示确认，避免静默丢条目
+  if(wbEntries.length>=5 && parsed.length < wbEntries.length*0.6){
+    if(!confirm("预览框解析出 "+parsed.length+" 条，比之前的 "+wbEntries.length+" 条少了不少。\n是以你现在预览框里的内容为准导出吗？\n（点取消则沿用之前完整的 "+wbEntries.length+" 条）")){
+      return;
+    }
+  }
+  wbEntries=parsed;
 }
 
 $("wbDl").onclick=()=>{
