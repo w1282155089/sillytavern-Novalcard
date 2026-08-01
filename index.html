@@ -100,7 +100,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>角色卡提取工具 <span style="font-size:13px;font-weight:500;color:var(--gold);vertical-align:2px">v5.8.5</span></h1>
+    <h1>角色卡提取工具 <span style="font-size:13px;font-weight:500;color:var(--gold);vertical-align:2px">v5.8.6</span></h1>
     <div class="sub">导入小说 · 扫描角色 · 按模板抽取角色卡</div>
     <div class="rule"></div>
   </header>
@@ -1584,6 +1584,7 @@ $("pnDl").onclick=()=>{
 // ==================== 世界书提取 ====================
 let wbEntries=[];
 let wbState=null;   // 断点续提：{len, chunks, cap, next, map}
+let wbPlotState=null;   // 剧情分段断点：{len, cap, next}
 
 function downloadBlob(text, filename, mime){
   const blob=new Blob([text],{type:(mime||"text/plain")+";charset=utf-8"});
@@ -1735,7 +1736,7 @@ $("wbClearBtn").onclick=()=>{
   if(runningBtn){ flash($("wbMsg"),"有任务进行中，请先停止",true); return; }
   if(!wbEntries.length && !$("wbOut").value.trim()){ flash($("wbMsg"),"世界书已经是空的"); return; }
   if(!confirm("确定清空当前世界书的所有条目、重新开始吗？（历史记录不受影响，之前的可在下面「历史记录」找回）")) return;
-  wbEntries=[]; wbState=null; $("wbOut").value=""; clearLog("wbLog");
+  wbEntries=[]; wbState=null; wbPlotState=null; $("wbOut").value=""; clearLog("wbLog");
   flash($("wbMsg"),"已清空，可重新勾选生成");
 };
 $("wbCopy").onclick=async()=>{
@@ -1851,14 +1852,18 @@ async function wbPlotCore(signal){
   const size=Math.max(50000, parseInt(els.chunkSize.value)||40000);
   const chunks=[]; for(let i=0;i<text.length;i+=size) chunks.push(text.slice(i,i+size));
   const cap=Math.min(chunks.length, Math.max(1, parseInt(els.scanCap.value)||40));
-  logTo("wbLog","剧情分段：共 "+cap+" 段，开始…");
+  // 断点续跑：同一本书、上次没跑完 → 从上次的段接着来（已生成的剧情条目保留在 wbEntries 里）
+  const resuming = wbPlotState && wbPlotState.len===text.length && wbPlotState.cap===cap && wbPlotState.next<cap;
+  let startI = resuming ? wbPlotState.next : 0;
+  if(resuming) logTo("wbLog","剧情分段：从第 "+(startI+1)+"/"+cap+" 段继续…");
+  else { wbPlotState={ len:text.length, cap, next:0 }; logTo("wbLog","剧情分段：共 "+cap+" 段，开始…"); }
   const nsfwLine=$("wbNsfw").checked ? "可包含成人向剧情。" : "不必回避剧情，但不要展开露骨性描写。";
-  const added=[];
+  let addedTotal=0;
   try{
-    for(let i=0;i<cap;i++){
+    for(let i=startI;i<cap;i++){
       if(signal.aborted) break;
       $("wbMsg").innerHTML='<span class="spinner"></span>剧情分段 '+(i+1)+"/"+cap;
-      if(i>0) await sleep(400);
+      if(i>startI) await sleep(400);
       const prompt=
         "下面是小说按顺序的第 "+(i+1)+"/"+cap+" 段。请把这段的剧情按「阶段 / 副本」切分并逐段总结。\n"+
         "每个阶段一条，包含：\n"+
@@ -1873,29 +1878,34 @@ async function wbPlotCore(signal){
           {onWait:(n,code,w)=>logTo("wbLog","第"+(i+1)+"段 HTTP "+code+"，"+(w/1000)+"s 后重试("+n+")","e")});
       }catch(err){
         if(isAbort(err,signal)){ logTo("wbLog","已停止","e"); break; }
-        logTo("wbLog","第"+(i+1)+"段请求失败："+err.message,"e"); continue;
+        logTo("wbLog","第"+(i+1)+"段请求失败："+err.message,"e"); wbPlotState.next=i+1; continue;
       }
       const arr=extractJsonArray(raw);
       if(!Array.isArray(arr)){
         const snip=String(raw).trim().replace(/\s+/g," ").slice(0,90);
         logTo("wbLog","第"+(i+1)+"段解析失败，模型返回："+(snip?"「"+snip+"」":"（空，多半被安全过滤挡了，或 max_tokens 被思考用光）"),"e");
-        continue;
+        wbPlotState.next=i+1; continue;
       }
+      // 即时写入 wbEntries，停了也保留已生成的
       for(const e of arr){
         if(!e||!e.title||!e.content) continue;
         const rawTitle=String(e.title).trim();
         const title="剧情·"+rawTitle;
         const keys=Array.isArray(e.keys)? e.keys.map(k=>String(k).trim()).filter(Boolean):[];
         if(!keys.includes(rawTitle)) keys.unshift(rawTitle);
-        added.push({ category:"剧情", title, keys, content:String(e.content).trim(), constant:false });
+        const entry={ category:"剧情", title, keys, content:String(e.content).trim(), constant:false };
+        const idx=wbEntries.findIndex(x=>x.title===entry.title);
+        if(idx>=0) wbEntries[idx]=entry; else wbEntries.push(entry);
+        addedTotal++;
       }
-      logTo("wbLog","第"+(i+1)+"段 → 累计剧情条目 "+added.length,"g");
+      $("wbOut").value=buildWbPreview(wbEntries);
+      wbPlotState.next=i+1;
+      logTo("wbLog","第"+(i+1)+"段 → 剧情条目累计 "+addedTotal,"g");
     }
-    if(!added.length){ if(signal.aborted) return; logTo("wbLog","没提取到剧情","e"); return; }
-    for(const e of added){ const idx=wbEntries.findIndex(x=>x.title===e.title); if(idx>=0) wbEntries[idx]=e; else wbEntries.push(e); }
-    $("wbOut").value=buildWbPreview(wbEntries);
-    logTo("wbLog","剧情分段：新增 "+added.length+" 条（共 "+wbEntries.length+" 条）","g");
-    saveHistory({ id:Date.now(), type:"worldbook", time:new Date().toLocaleString(), title:"世界书 · "+wbEntries.length+" 条（含剧情分段）", model:els.model.value.trim(), text:$("wbOut").value });
+    const doneAll = wbPlotState.next>=cap;
+    if(doneAll){ wbPlotState=null; if(addedTotal) logTo("wbLog","剧情分段完成，新增 "+addedTotal+" 条（共 "+wbEntries.length+" 条）","g"); else logTo("wbLog","没提取到剧情","e"); }
+    else { $("wbMsg").textContent="剧情分段已停止 · 再点「生成所选世界书」从第 "+(wbPlotState.next+1)+" 段继续"; }
+    if(addedTotal) saveHistory({ id:Date.now(), type:"worldbook", time:new Date().toLocaleString(), title:"世界书 · "+wbEntries.length+" 条（含剧情分段）", model:els.model.value.trim(), text:$("wbOut").value });
   }catch(e){ throw e; }
 }
 
