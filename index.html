@@ -100,7 +100,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>角色卡提取工具 <span style="font-size:13px;font-weight:500;color:var(--gold);vertical-align:2px">v5.8.6</span></h1>
+    <h1>角色卡提取工具 <span style="font-size:13px;font-weight:500;color:var(--gold);vertical-align:2px">v5.9.0</span></h1>
     <div class="sub">导入小说 · 扫描角色 · 按模板抽取角色卡</div>
     <div class="rule"></div>
   </header>
@@ -449,9 +449,52 @@
     </div>
   </div>
 
-  <!-- 8. 打包导出 -->
+  <!-- 8. 生成开场白 -->
   <div class="card">
-    <h2><span class="idx">08</span> 打包导出</h2>
+    <h2><span class="idx">08</span> 生成开场白</h2>
+    <p class="hint">生成角色卡的<b>开场白（first_mes）</b>——每次开聊时角色发的第一条消息。打包导出时会自动写进角色卡。</p>
+    <div class="row">
+      <div class="field">
+        <label>给谁写开场白（填角色名，留空则用当前角色卡）</label>
+        <input type="text" id="fmChar" class="mono" placeholder="如：沈砚" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>视角 / 人称</label>
+        <select id="fmView" class="mono">
+          <option value="second" selected>第二人称（对着 {{user}} 说 / 描写）</option>
+          <option value="first">第一人称（角色「我」的口吻）</option>
+          <option value="third">第三人称（旁白式）</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>开场情境（想从什么场景开始？留空则由 AI 依据原文设定一个合适的初见场景）</label>
+      <textarea id="fmScene" rows="2" placeholder="例：雨夜，{{user}} 抱着一只木匣推开旧书铺的门，第一次见到沈砚。"></textarea>
+    </div>
+    <div class="btnrow" style="margin-top:0;margin-bottom:6px">
+      <label class="toggle"><input type="checkbox" id="fmUseNovel" checked> 结合小说世界观与文风</label>
+      <label class="toggle"><input type="checkbox" id="fmNsfw"> 包含 NSFW</label>
+    </div>
+    <div class="btnrow">
+      <button class="primary" id="fmBtn" type="button">生成开场白</button>
+      <span id="fmMsg" class="faint" style="font-size:12px"></span>
+    </div>
+    <div class="log" id="fmLog"></div>
+    <div class="field" style="margin-top:16px">
+      <textarea id="fmOut" class="out" spellcheck="false" placeholder="生成的开场白会显示在这里，可直接编辑。打包导出时会写进角色卡的 first_mes…"></textarea>
+    </div>
+    <div class="btnrow">
+      <button class="ghost" id="fmCopy">复制</button>
+      <button class="ghost" id="fmDl">下载 .txt</button>
+    </div>
+    <div class="warnbox">
+      开场白会在「打包导出」时自动写进角色卡。也可以复制后自己粘到酒馆角色的「第一条消息」里。用 {{user}} 指代使用者、{{char}} 指代角色。
+    </div>
+  </div>
+
+  <!-- 9. 打包导出 -->
+  <div class="card">
+    <h2><span class="idx">09</span> 打包导出</h2>
     <p class="hint">流程最后一步：把上面生成好的角色卡、世界书、文风打包成一张<b>酒馆可直接导入的完整角色卡</b>（世界书内嵌绑定，文风自动写入条目）。缺哪部分就只打包已有的。</p>
     <div class="btnrow">
       <button class="primary" id="fullCardBtn" type="button">导出完整角色卡 .json</button>
@@ -462,9 +505,9 @@
     </div>
   </div>
 
-  <!-- 9. 自检 -->
+  <!-- 10. 自检 -->
   <div class="card">
-    <h2><span class="idx">09</span> 自检</h2>
+    <h2><span class="idx">10</span> 自检</h2>
     <p class="hint">对照原文检查已生成的角色卡 / 世界书条目有没有 OOC、经历互串、与原文冲突的错误，给出问题日志和修正后的成品。先「扫描当前内容」，勾选要查的项，再「开始自检」（只查勾选的，省 token）。不含历史记录。</p>
     <div class="btnrow" style="margin-top:0">
       <button class="ghost" id="checkScanBtn" type="button">扫描当前内容</button>
@@ -482,9 +525,9 @@
     </div>
   </div>
 
-  <!-- 10. 历史记录 -->
+  <!-- 11. 历史记录 -->
   <div class="card">
-    <h2><span class="idx">10</span> 历史记录</h2>
+    <h2><span class="idx">11</span> 历史记录</h2>
     <p class="hint">每次生成的角色卡会自动存到这里（本机浏览器，最多 30 条）。点「查看」读回上方输出框。</p>
     <div class="btnrow" style="margin-top:0">
       <button class="ghost" id="histClear" type="button">清空全部</button>
@@ -493,9 +536,9 @@
     <div id="histList" style="margin-top:14px"></div>
   </div>
 
-  <!-- 11. 报错自查 -->
+  <!-- 12. 报错自查 -->
   <div class="card">
-    <h2><span class="idx">11</span> 报错自查</h2>
+    <h2><span class="idx">12</span> 报错自查</h2>
     <p class="hint">遇到报错先对照下面几条，多数能自己解决。</p>
     <details class="adv"><summary>Load failed / 网络错误 / 请求发不出去</summary>
       <div class="warnbox" style="margin-top:8px">请求没到服务器，通常是浏览器拦截：① 若用的是 http 接口，别在 https 页面里调（混合内容会被拦）；② 接口需支持跨域（CORS），不支持的换一个；③ 本地接口请确认它确实在运行。与模型、参数无关，别在那上面找原因。</div>
@@ -784,7 +827,7 @@ async function fetchWithTimeout(url, opts, ms=180000){
   }finally{ clearTimeout(t); if(outer) outer.removeEventListener("abort",onOuter); }
 }
 // 所有会发请求的按钮：同一时刻只允许一个在跑，其余禁用，避免并发抢占 runController 导致卡死
-const ASYNC_BTNS=["scanBtn","genBtn","contBtn","reviseBtn","pnBtn","wbRunBtn","wbContBtn","wbReviseBtn","styleBtn","checkRunBtn"];
+const ASYNC_BTNS=["scanBtn","genBtn","contBtn","reviseBtn","pnBtn","fmBtn","wbRunBtn","wbContBtn","wbReviseBtn","styleBtn","checkRunBtn"];
 let runningBtn=null;
 function setRunning(btn,on){
   if(on){
@@ -1504,6 +1547,74 @@ $("reviseBtn").onclick=async()=>{
 
 updateStat();
 
+// ==================== 生成开场白（first_mes） ====================
+$("fmBtn").onclick=async()=>{
+  const btn=$("fmBtn");
+  if(btn.dataset.running){ stopRun(); return; }
+  if(!els.baseUrl.value.trim()||!els.model.value.trim()){ flash($("fmMsg"),"请先填接口设置",true); return; }
+  const charName=$("fmChar").value.trim() || (selectedNames[0]||"") || parseCardName($("output").value)||"";
+  if(!charName){ flash($("fmMsg"),"请填角色名，或先生成角色卡",true); return; }
+
+  setRunning(btn,true); clearLog("fmLog"); $("fmOut").value="";
+  $("fmMsg").innerHTML='<span class="spinner"></span>生成中…';
+  const signal=runSignal();
+  const useStream=$("stream").checked;
+  const maxT=Math.max(2000,parseInt(els.maxTok.value)||4000);
+  const maxCont=$("autoCont").checked?5:0;
+
+  const view=$("fmView").value;
+  const viewRule = view==="first" ? "· 用角色第一人称「我」的口吻来写。"
+    : view==="third" ? "· 用第三人称旁白视角来写。"
+    : "· 用第二人称：以角色的动作、语言、神态来对着 {{user}} 展开，可穿插对 {{user}} 的称呼与描写。";
+  const scene=$("fmScene").value.trim();
+  const useNovel=$("fmUseNovel").checked && $("novel").value.trim();
+
+  // 参考：角色卡本身 + 相关原文（贴合性格与文风）
+  const cardText=$("output").value.trim();
+  let ref="";
+  if(useNovel){ ref=collectContext(charName).slice(0,60000); logTo("fmLog","参考原文约 "+ref.length.toLocaleString()+" 字"); }
+  const styleText=$("styleOut").value.trim();
+
+  const sys="你是角色扮演开场白撰写者，为角色卡写 first_mes（每次开聊时角色发出的第一条消息）。开场白要有代入感、有画面、留出让对方接话的空间。";
+  const user=
+    "请为角色「"+charName+"」写一段开场白（first_mes）。\n\n"+
+    (cardText? ("【角色卡（务必贴合其身份与性格，严禁 OOC）】\n"+cardText.slice(0,8000)+"\n\n") : "")+
+    (scene? ("【开场情境】\n"+scene+"\n\n") : "【开场情境】请依据角色设定，安排一个自然的初见 / 开场场景。\n\n")+
+    (styleText? ("【文风参考（尽量贴近这种笔法）】\n"+styleText.slice(0,2000)+"\n\n") : "")+
+    (useNovel? ("【原文节选（供你贴合世界观与语气）】\n"+ref+"\n\n") : "")+
+    "要求：\n"+
+    viewRule+"\n"+
+    "· 用 {{user}} 指代使用者、{{char}} 或角色名指代角色；不要替 {{user}} 说话或做决定，留出接话空间。\n"+
+    "· 有场景、有动作、有神态，能立刻把人带入；篇幅适中（一般两三段）。\n"+
+    (useNovel? "· 贴合原文的时代背景与设定，不要写出与原著冲突的情节。\n" : "")+
+    ($("fmNsfw").checked ? "· 可包含成人向氛围，但开场白重在铺场景与代入，不必一上来就露骨。\n" : "· 不要写露骨的性内容。\n")+
+    "· 直接输出开场白正文，不要额外解释，不要用代码块包裹。";
+  const messages=[{role:"system",content:withSys(sys)},{role:"user",content:user}];
+  const onWait=(n,code,w)=>logTo("fmLog","HTTP "+code+"，"+(w/1000)+"s 后重试("+n+")","e");
+  const render=f=>{ $("fmOut").value=dispThink(f); $("fmOut").scrollTop=$("fmOut").scrollHeight; };
+
+  try{
+    const raw=await generate(messages,{maxTokens:maxT,useStream,signal,onText:render,onWait,maxCont,logEl:"fmLog",label:"开场白"});
+    const finalText=stripFence(stripThink(raw)).trim();
+    if(!finalText){
+      const snip=String(raw).trim().replace(/\s+/g," ").slice(0,90);
+      $("fmOut").value="";
+      logTo("fmLog","没拿到正文。模型返回："+(snip?("「"+snip+"」"):"（空，多半被安全过滤挡了，或 max_tokens 被思考用光）"),"e");
+      $("fmMsg").textContent="没输出正文——可调大 max_tokens 或换模型";
+      return;
+    }
+    $("fmOut").value=finalText;
+    $("fmMsg").textContent="完成（打包导出时会自动写进角色卡）";
+    logTo("fmLog","完成","g");
+    saveHistory({ id:Date.now(), type:"style", time:new Date().toLocaleString(), title:"开场白 · "+charName, model:els.model.value.trim(), text:finalText });
+  }catch(e){
+    if(isAbort(e,signal)) $("fmMsg").textContent="已停止";
+    else { logTo("fmLog","失败："+e.message,"e"); $("fmMsg").textContent="失败"; }
+  }finally{ setRunning(btn,false); }
+};
+$("fmCopy").onclick=async()=>{ const t=$("fmOut").value; if(!t) return; try{ await navigator.clipboard.writeText(t); flash($("fmMsg"),"已复制"); }catch(e){ $("fmOut").select(); document.execCommand("copy"); flash($("fmMsg"),"已复制"); } };
+$("fmDl").onclick=()=>{ const t=$("fmOut").value; if(!t){ flash($("fmMsg"),"没有内容",true); return; } downloadBlob(t,"开场白.txt","text/plain"); };
+
 // ==================== 生成 user 人设（persona） ====================
 $("pnBtn").onclick=async()=>{
   const btn=$("pnBtn");
@@ -2059,20 +2170,21 @@ function buildFullCard(){
     entries.push({ category:"文风", title:"文风", keys:[], content:styleText, constant:true });
   }
   const bookName = $("wbName").value.trim() || (name+"的世界书");
+  const firstMes = $("fmOut").value.trim();
   const data={
-    name, description:cardText, personality:"", scenario:"", first_mes:"", mes_example:"",
+    name, description:cardText, personality:"", scenario:"", first_mes:firstMes, mes_example:"",
     creator_notes:"由小说角色卡提取器生成", system_prompt:"", post_history_instructions:"",
     alternate_greetings:[], tags:[], creator:"", character_version:"1.0", extensions:{}
   };
   if(entries.length) data.character_book={ name:bookName, entries:bookEntries(entries) };
-  return { name, description:cardText, spec:"chara_card_v2", spec_version:"2.0", data };
+  return { name, description:cardText, first_mes:firstMes, spec:"chara_card_v2", spec_version:"2.0", data };
 }
 $("fullCardBtn").onclick=()=>{
   const card=buildFullCard();
   if(!card){ flash($("fullCardMsg"),"请先在上面生成角色卡",true); return; }
   const fn=(card.name||"角色").replace(/[\\/:*?"<>|、]/g,"_")+".json";
   downloadBlob(JSON.stringify(card,null,2), fn, "application/json");
-  const parts=[]; if(card.data.character_book){ parts.push("世界书 "+card.data.character_book.entries.length+" 条"); }
+  const parts=[]; if(card.data.character_book){ parts.push("世界书 "+card.data.character_book.entries.length+" 条"); } if(card.data.first_mes){ parts.push("开场白"); }
   flash($("fullCardMsg"),"已导出"+(parts.length?("（含"+parts.join("、")+"）"):"（仅角色卡）"));
 };
 
